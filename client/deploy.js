@@ -22,12 +22,12 @@ var config = {
     fs: require('fs'),
     options: {}, // ultimately config vars are stored here and past to program being tracked
     run: function(onFinsh){
-        var readFile = config.fs.createReadStream('encrypted_' + config.env);
+        var readFile = config.fs.createReadStream(__dirname + '/encrypted_' + config.env);
         var decrypt = config.crypto.createDecipher('aes-256-ctr', config.key);
-        var writeFile = config.fs.createWriteStream('decrypted_' + config.env + '.js');
+        var writeFile = config.fs.createWriteStream(__dirname + '/decrypted_' + config.env + '.js');
         readFile.pipe(decrypt).pipe(writeFile);
         writeFile.on('finish', function(){
-            config.options = {env: require('./decrypted_' + config.env + '.js')};
+            config.options = {env: require(__dirname + '/decrypted_' + config.env + '.js')};
             console.log(JSON.stringify(config.options.env, null, 4));
             onFinsh(); // call next thing to do, prabably npm install
         });
