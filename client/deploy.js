@@ -28,7 +28,6 @@ var config = {
         readFile.pipe(decrypt).pipe(writeFile);
         writeFile.on('finish', function(){
             config.options = {env: require(__dirname + '/decrypted_' + config.env + '.js')};
-            console.log(JSON.stringify(config.options.env, null, 4));
             onFinsh(); // call next thing to do, prabably npm install
         });
 
