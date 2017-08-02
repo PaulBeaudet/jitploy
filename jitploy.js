@@ -5,6 +5,7 @@ var service = { // logic for adding a removing service integrations
     disconnect: function(socketId){                                                          // hold socketId information in closure
         return function socketDisconnect(){
             service.do(socketId, function removeservice(index){
+                console.log(service.s.name + 'was disconnected');
                 service.s.splice(index, 1);
             });// given its there remove service from services array
         };
