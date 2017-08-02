@@ -5,7 +5,7 @@ var service = { // logic for adding a removing service integrations
     disconnect: function(socketId){                                                          // hold socketId information in closure
         return function socketDisconnect(){
             service.do(socketId, function removeservice(index){
-                console.log(service.s.name + 'was disconnected');
+                console.log(service.s.name + ' was disconnected');
                 service.s.splice(index, 1);
             });// given its there remove service from services array
         };
@@ -38,6 +38,7 @@ var socket = {                                                         // socket
         return function(authPacket){                                   // data passed from service {token:"valid token", name:"of service"}
             if(socket.auth(authPacket)){                               // make sure we are connected w/ trusted source and name
                 authPacket.socketId = client.id;
+                console.log(authPacket.name + ' was connected');
                 service.s.push(authPacket);                            // hold on to what clients are connected to us
                 client.on('disconnect', service.disconnect(client.id));// remove service from service array on disconnect
             } else {                                                   // in case token was wrong or name not provided
