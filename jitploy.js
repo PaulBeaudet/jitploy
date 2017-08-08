@@ -1,4 +1,6 @@
 // jitploy.js ~ Copyright 2017 Paul Beaudet ~ MIT License
+// Relays github webhook information to clients
+var RELAY_DB = 'jitployRelay';
 
 var service = { // logic for adding a removing service integrations
     s: [], // array where we store properties and functions of connected sevices
@@ -44,7 +46,7 @@ var socket = {                                                         // socket
             } else {                                                   // in case token was wrong or name not provided
                 console.log('client tried to connect' + JSON.stringify(authPacket, null, 4));
                 client.on('disconnect', function(){
-                    console.log('Rejected socket disconnected: ' + client.id);
+                    mongo.log('Rejected socket disconnected: ' + client.id);
                 });
             }
         };
@@ -56,6 +58,33 @@ var socket = {                                                         // socket
         return false;                                  // if we don't find something this client is no
     }
 };
+
+var mongo = {
+    client: require('mongodb').MongoClient,
+    db: {},                                            // object that contains connected databases
+    connect: function(url, dbName){                    // url to db and what well call this db in case we want multiple
+        mongo.client.connect(url, mongo.bestCase(function onConnect(db){
+            mongo.db[dbName] = db;
+        }));
+    },
+    bestCase: function(mongoSuccessCallback){          // awful abstraction layer to be lazy
+        return function handleWorstCaseThings(error, wantedThing){
+            if(error){
+                mongo.log('well guess we failed to plan for this: ' + error);
+            } else if (wantedThing){
+                mongoSuccessCallback(wantedThing);
+            }
+        }
+    }
+    log: function(msg){                                // persistent logs
+        mongo.db[RELAY_DB].collection('logs').insertOne({msg: msg}, function onInsert(error){
+            if(error){
+                console.log('Mongo Log error: ' + error);
+                console.log(msg);
+            }
+        }));
+    }
+}
 
 var github = {
     request: require('request'),
@@ -69,10 +98,13 @@ var github = {
         return function(req, res){                                // route handler
             if(req.body){
                 res.status(200).send('OK');res.end();             // ACK notification
-                console.log('Just got a post from ' + req.body.repository.name);   // see what we get
-                if(github.verifyHook(req.headers['x-hub-signature'], req.body, process.env.GITHUB_SECRET)){
-                    signal.deploy(req.body.repository.name);
-                }
+                var findQuery = {fullRepoName: req.body.repository.full_name.toLowerCase()};
+                mongo.db[RELAY_DB].collection('github_secrets').find(findQuery, mongo.bestCase(function onFind(doc){
+                    if(github.verifyHook(req.headers['x-hub-signature'], req.body, doc.secret)){
+                        signal.deploy(req.body.repository.name);  // to look up git hub secret check if valid request and signal deploy
+                    }
+                }));
+                console.log('Just got a post from ' + req.body.repository.full_name);   // see what we get
             }
         };
     }
@@ -93,7 +125,7 @@ var serve = {                                                // depends on cooki
         var app = serve.express();                           // create famework object
         var http = require('http').Server(app);              // http server for express frameworkauth)
         app.use(serve.parse.json());                         // support JSON bodies
-        app.use(serve.express.static(__dirname + '/views')); // serve page dependancies (socket, jquery, bootstrap)
+        // app.use(serve.express.static(__dirname + '/views')); // serve page dependancies (socket, jquery, bootstrap)
         var router = serve.express.Router();                 // create express router object to add routing events to
         router.post('/pullrequest', github.listenEvent());   // real listener post route
         app.use(router);                                     // get express to user the routes we set
@@ -101,6 +133,7 @@ var serve = {                                                // depends on cooki
     }
 };
 
+mongo.connect(process.env.MONGODB_URI, RELAY_DB);            // connect to jitploy relay database
 var http = serve.theSite();                                  // set express middleware and routes up
 socket.listen(http);                                         // listen and handle socket connections
 http.listen(process.env.PORT);                               // listen on specified PORT enviornment variable
