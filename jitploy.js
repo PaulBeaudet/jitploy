@@ -75,14 +75,14 @@ var mongo = {
                 mongoSuccessCallback(wantedThing);
             }
         }
-    }
+    },
     log: function(msg){                                // persistent logs
         mongo.db[RELAY_DB].collection('logs').insertOne({msg: msg}, function onInsert(error){
             if(error){
                 console.log('Mongo Log error: ' + error);
                 console.log(msg);
             }
-        }));
+        });
     }
 }
 
