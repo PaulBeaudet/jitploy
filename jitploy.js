@@ -87,7 +87,6 @@ var mongo = {
 }
 
 var github = {
-    request: require('request'),
     crypto: require('crypto'),
     querystring: require('querystring'),
     verifyHook: function(signature, payload, secret){
@@ -100,6 +99,7 @@ var github = {
                 res.status(200).send('OK');res.end();             // ACK notification
                 var findQuery = {fullRepoName: req.body.repository.full_name.toLowerCase()};
                 mongo.db[RELAY_DB].collection('github_secrets').find(findQuery, mongo.bestCase(function onFind(doc){
+                    console.log
                     if(github.verifyHook(req.headers['x-hub-signature'], req.body, doc.secret)){
                         signal.deploy(req.body.repository.name);  // to look up git hub secret check if valid request and signal deploy
                     }
