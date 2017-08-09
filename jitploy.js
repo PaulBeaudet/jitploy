@@ -26,39 +26,6 @@ var service = { // logic for adding a removing service integrations
     }
 };
 
-var socket = {                                                         // socket.io singleton: handles socket server logic
-    io: require('socket.io'),                                          // grab socket.io library
-    tokens: process.env.TOKENS ? process.env.TOKENS.split(', ') : [],  // comma deliminated string of valid tokens
-    trusted_names: process.env.TRUSTED_NAMES ? process.env.TRUSTED_NAMES.split(', ') : [], // comma deliminated string of allowed names
-    listen: function(server){                                          // create server and setup on connection events
-        socket.io = socket.io(server);                                 // specify http server to make connections w/ to get socket.io object
-        socket.io.on('connection', function(client){                   // client holds socket vars and methods for each connection event
-            client.on('authenticate', socket.setup(client));           // initially clients can only ask to authenticate
-        }); // basically we want to authorize our users before setting up event handlers for them or adding them to emit whitelist
-    },
-    setup: function(client){                                           // hold socketObj/key in closure, return callback to authorize user
-        return function(authPacket){                                   // data passed from service {token:"valid token", name:"of service"}
-            if(socket.auth(authPacket)){                               // make sure we are connected w/ trusted source and name
-                authPacket.socketId = client.id;
-                console.log(authPacket.name + ' was connected');
-                service.s.push(authPacket);                            // hold on to what clients are connected to us
-                client.on('disconnect', service.disconnect(client.id));// remove service from service array on disconnect
-            } else {                                                   // in case token was wrong or name not provided
-                console.log('client tried to connect' + JSON.stringify(authPacket, null, 4));
-                client.on('disconnect', function(){
-                    mongo.log('Rejected socket disconnected: ' + client.id);
-                });
-            }
-        };
-    },
-    auth: function(authPacket){
-        for(var i = 0; i < socket.tokens.length; i++){ // parse though array of tokens, there is a name for every token
-            if(authPacket.token === socket.tokens[i] && authPacket.name === socket.trusted_names[i]){return true;}
-        }
-        return false;                                  // if we don't find something this client is no
-    }
-};
-
 var mongo = {
     client: require('mongodb').MongoClient,
     db: {},                                            // object that contains connected databases
@@ -67,17 +34,23 @@ var mongo = {
             mongo.db[dbName] = db;
         }));
     },
-    bestCase: function(mongoSuccessCallback){          // awful abstraction layer to be lazy
-        return function handleWorstCaseThings(error, wantedThing){
+    bestCase: function(mongoSuccessCallback, noResultCallback){          // awful abstraction layer to be lazy
+        return function handleWorstCaseThings(error, wantedThing){       // this is basically the same pattern for every mongo query callback
             if(error){
                 mongo.log('well guess we failed to plan for this: ' + error);
             } else if (wantedThing){
                 mongoSuccessCallback(wantedThing);
+            } else if (noResultCallback){
+                noResultCallback();
             }
         }
     },
     log: function(msg){                                // persistent logs
-        mongo.db[RELAY_DB].collection('logs').insertOne({msg: msg}, function onInsert(error){
+        var timestamp = new Date();
+        mongo.db[RELAY_DB].collection('logs').insertOne({
+                msg: msg,
+                timestamp: timestamp.toDateString()
+            }, function onInsert(error){
             if(error){
                 console.log('Mongo Log error: ' + error);
                 console.log(msg);
@@ -85,6 +58,39 @@ var mongo = {
         });
     }
 }
+
+var socket = {                                                         // socket.io singleton: handles socket server logic
+    io: require('socket.io'),                                          // grab socket.io library
+    listen: function(server){                                          // create server and setup on connection events
+        socket.io = socket.io(server);                                 // specify http server to make connections w/ to get socket.io object
+        socket.io.on('connection', function(client){                   // client holds socket vars and methods for each connection event
+            client.on('authenticate', socket.setup(client));           // initially clients can only ask to authenticate
+        }); // basically we want to authorize our users before setting up event handlers for them or adding them to emit whitelist
+    },
+    setup: function(client){
+        return function(authPacket){
+            if(authPacket && authPacket.hasOwnProperty('name') && authPacket.hasOwnProperty('token')){ // lets be sure we got something valid from client
+                mongo.db[RELAY_DB].collection('clients').findOne({name: authPacket.name, token: authPacket.token}, mongo.bestCase(function onFind(doc){
+                    authPacket.socketId = client.id;
+                    console.log(authPacket.name + ' was connected');
+                    service.s.push(authPacket);                            // hold on to what clients are connected to us
+                    client.on('disconnect', service.disconnect(client.id));// remove service from service array on disconnect
+                }, function onNoResult(){
+                    mongo.log('client not found: ' + JSON.stringify(authPacket, null, 4));
+                    socket.badClient(client);
+                }));
+            } else {
+                mongo.log('invalid client data: ' + authPacket);
+                socket.badClient(client);
+            }
+        }
+    },
+    badClient: function(client){
+        client.on('disconnect', function(){
+            mongo.log('Rejected socket disconnected: ' + client.id);
+        });
+    }
+};
 
 var github = {
     crypto: require('crypto'),
@@ -117,14 +123,13 @@ var signal = {
     }
 };
 
-var serve = {                                                // depends on cookie, routes, handles express server setup
+var serve = {                                                // handles express server setup
     express: require('express'),                             // server framework library
     parse: require('body-parser'),                           // middleware to parse JSON bodies
     theSite: function (){                                    // methode call to serve site
         var app = serve.express();                           // create famework object
-        var http = require('http').Server(app);              // http server for express frameworkauth)
+        var http = require('http').Server(app);              // http server for express framework
         app.use(serve.parse.json());                         // support JSON bodies
-        // app.use(serve.express.static(__dirname + '/views')); // serve page dependancies (socket, jquery, bootstrap)
         var router = serve.express.Router();                 // create express router object to add routing events to
         router.post('/pullrequest', github.listenEvent());   // real listener post route
         app.use(router);                                     // get express to user the routes we set
