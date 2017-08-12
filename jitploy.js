@@ -1,4 +1,4 @@
-// jitploy.js ~ Copyright 2017 Paul Beaudet ~ MIT License
+// jitploy.js ~ SERVER ~ Copyright 2017 Paul Beaudet ~ MIT License
 // Relays github webhook information to clients
 var RELAY_DB = 'jitployRelay';
 
@@ -105,9 +105,10 @@ var github = {
                 res.status(200).send('OK');res.end();             // ACK notification
                 var findQuery = {fullRepoName: req.body.repository.full_name.toLowerCase()};
                 mongo.db[RELAY_DB].collection('github_secrets').findOne(findQuery, mongo.bestCase(function onFind(doc){
+                    console.log('verifing secret');
                     if(github.verifyHook(req.headers['x-hub-signature'], req.body, doc.secret)){
                         signal.deploy(req.body.repository.name);  // to look up git hub secret check if valid request and signal deploy
-                    }
+                    } else {console.log('secret no good');}
                 }));
                 console.log('Just got a post from ' + req.body.repository.full_name);   // see what we get
             }
@@ -117,7 +118,9 @@ var github = {
 
 var signal = {
     deploy: function(repository){
+        console.log('looking for ' + repository);
         service.doByName(repository, function deployIt(index){
+            console.log('Signal deploy for ' + repository);
             socket.io.to(service.s[index].socketId).emit('deploy');
         });
     }
