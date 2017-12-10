@@ -16,13 +16,7 @@ Given speed is important there is no consideration of integration in this deploy
 
 # Run configuration considerations
 
-This repo is set up to be run with heroku but it could be propped up on any public server with the following
-
-### configuration
-
-    GITHUB_SECRET = // secret shared with github webhook server
-    TOKENS =        // comma space delimitated list of tokens for services to connect with
-    TRUSTED_NAMES = // comma space delimitated list of names that correlate with above tokens
+see sampleEcosystem.config.js to see an example of how to start the service with pm2
 
 ### Github
 
