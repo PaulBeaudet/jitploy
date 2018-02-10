@@ -101,10 +101,12 @@ var socket = {                                                         // socket
     }
 };
 
-var ohBother = {    // determines when to tell clients to buzz off so server can sleep
-    sleeping: true, // makes sure only one time about to ask for a break is called
+var ohBother = {     // determines when to tell clients to buzz off so server can sleep
+    sleeping: true,  // makes sure only one time about to ask for a break is called
     whenIsBreakTime: function(){
-        if(ohBother.sleeping){setTimeout(ohBother.askForBreak, ohBother.toOffHours(CD_HOURS_END));} // oh bother you woke me up
+        var duration = ohBother.toOffHours(CD_HOURS_END);
+        console.log('durration to break ' + duration);
+        if(ohBother.sleeping){setTimeout(ohBother.askForBreak, duration);} // oh bother you woke me up
         ohBother.sleeping = false; // any time this is called server has been woken
     },
     askForBreak: function(){
@@ -115,6 +117,7 @@ var ohBother = {    // determines when to tell clients to buzz off so server can
     toOffHours: function(hourStart, hourEnd){
         var currentDate = new Date();
         var currentHour = currentDate.getHours();
+        console.log(currentHour);
         if(currentHour < hourStart || currentHour > hourEnd){return 0;} // if was supposed to be sleeping, stays up a half hour once woke
         var currentMillis = currentDate.getTime();
         var offTime = currentDate.setHours(hourEnd, 0, 0, 0);
