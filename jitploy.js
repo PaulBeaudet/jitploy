@@ -43,7 +43,7 @@ var mongo = {
             } else if (noResultCallback){
                 noResultCallback();
             }
-        }
+        };
     },
     log: function(msg){                                // persistent logs
         var timestamp = new Date();
@@ -57,7 +57,7 @@ var mongo = {
             }
         });
     }
-}
+};
 
 var socket = {                                                         // socket.io singleton: handles socket server logic
     io: require('socket.io'),                                          // grab socket.io library
@@ -83,7 +83,7 @@ var socket = {                                                         // socket
                 mongo.log('invalid client data: ' + authPacket);
                 socket.badClient(client);
             }
-        }
+        };
     },
     badClient: function(client){
         client.on('disconnect', function(){
