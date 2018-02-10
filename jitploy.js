@@ -1,6 +1,11 @@
 // jitploy.js ~ SERVER ~ Copyright 2017 Paul Beaudet ~ MIT License
 // Relays github webhook information to clients
 var RELAY_DB = 'jitployRelay';
+var CD_HOURS_START = 16;  // 5  pm UTC / 12 EST  // Defines hours when deployments can happen
+var CD_HOURS_END   = 22;  // 11 pm UTC /  6 EST  // TODO get this thing on your own server to remove this non-sense
+var ONE_HOUR = 3600000;
+var ONE_DAY = 86400000;
+var DOWNTIME = ONE_HOUR * 16; // hours of downtime
 
 var service = { // logic for adding a removing service integrations
     s: [], // array where we store properties and functions of connected sevices
@@ -65,6 +70,7 @@ var socket = {                                                         // socket
         socket.io = socket.io(server);                                 // specify http server to make connections w/ to get socket.io object
         socket.io.on('connection', function(client){                   // client holds socket vars and methods for each connection event
             client.on('authenticate', socket.setup(client));           // initially clients can only ask to authenticate
+            ohBother.whenIsBreakTime();                                // Server attempt to be lazy telling clients to buzz off
         }); // basically we want to authorize our users before setting up event handlers for them or adding them to emit whitelist
     },
     setup: function(client){
@@ -81,14 +87,37 @@ var socket = {                                                         // socket
                 }));
             } else {
                 mongo.log('invalid client data: ' + authPacket);
-                socket.badClient(client);
+                socket.io.to(client.id).emit('break', {time: 0});
+                client.on('disconnect', function(){mongo.log('Rejected socket disconnected: ' + client.id);});
             }
         };
     },
-    badClient: function(client){
-        client.on('disconnect', function(){
-            mongo.log('Rejected socket disconnected: ' + client.id);
+    deploy: function(repository){
+        console.log('looking for ' + repository);
+        service.doByName(repository, function deployIt(index){
+            console.log('Signal deploy for ' + repository);
+            socket.io.to(service.s[index].socketId).emit('deploy');
         });
+    }
+};
+
+var ohBother = {    // determines when to tell clients to buzz off so server can sleep
+    sleeping: true, // makes sure only one time about to ask for a break is called
+    whenIsBreakTime: function(){
+        if(ohBother.sleeping){setTimeout(ohBother.askForBreak, ohBother.toOffHours(CD_HOURS_END));} // oh bother you woke me up
+        ohBother.sleeping = false; // any time this is called server has been woken
+    },
+    askForBreak: function(){
+        socket.io.emit('break', {time: DOWNTIME}); // ask clients to buzz of for x amount of time once a day
+        ohBother.sleeping = true;
+    },
+    toOffHours: function(hourStart, hourEnd){
+        var currentDate = new Date();
+        var currentHour = currentDate.getHours();
+        if(currentHour < hourStart || currentHour > hourEnd){return 0;} // if was supposed to be sleeping, stays up a half hour once woke
+        var currentMillis = currentDate.getTime();
+        var offTime = currentDate.setHours(hourEnd, 0, 0, 0);
+        return offTime - currentMillis; // return millis before on time is up
     }
 };
 
@@ -107,22 +136,12 @@ var github = {
                 mongo.db[RELAY_DB].collection('github_secrets').findOne(findQuery, mongo.bestCase(function onFind(doc){
                     console.log('verifing secret');
                     if(github.verifyHook(req.headers['x-hub-signature'], req.body, doc.secret)){
-                        signal.deploy(req.body.repository.name);  // to look up git hub secret check if valid request and signal deploy
+                        socket.deploy(req.body.repository.name);  // to look up git hub secret check if valid request and signal deploy
                     } else {console.log('secret no good');}
                 }));
                 console.log('Just got a post from ' + req.body.repository.full_name);   // see what we get
             }
         };
-    }
-};
-
-var signal = {
-    deploy: function(repository){
-        console.log('looking for ' + repository);
-        service.doByName(repository, function deployIt(index){
-            console.log('Signal deploy for ' + repository);
-            socket.io.to(service.s[index].socketId).emit('deploy');
-        });
     }
 };
 
