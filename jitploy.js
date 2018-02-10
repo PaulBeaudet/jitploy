@@ -117,10 +117,12 @@ var ohBother = {     // determines when to tell clients to buzz off so server ca
         var currentDate = new Date();
         var currentHour = currentDate.getHours();
         var currentMillis = currentDate.getTime();
-        if(currentHour <= hourStart || currentHour >= hourEnd){return 0;} // if was supposed to be sleeping, stays up a half hour once woke
         if(hourStart < hourEnd){
+            if(currentHour < hourStart || currentHour >= hourEnd){return 0;} // if was supposed to be sleeping, stays up a half hour once woke
             return currentDate.setHours(hourEnd, 0, 0, 0) - currentMillis; // return millis before on time is up
         } else {
+            if(currentHour <= hourEnd){} // if was supposed to be sleeping, stays up a half hour once woke
+            else if (currentHour < hourStart){return 0;}
             return currentDate.setHours(23 + hourEnd, 0, 0, 0) - currentMillis; // return millis before on time is up
         }
     }
