@@ -108,6 +108,7 @@ var ohBother = {    // determines when to tell clients to buzz off so server can
         ohBother.sleeping = false; // any time this is called server has been woken
     },
     askForBreak: function(){
+        console.log('Break time');
         socket.io.emit('break', {time: DOWNTIME}); // ask clients to buzz of for x amount of time once a day
         ohBother.sleeping = true;
     },
