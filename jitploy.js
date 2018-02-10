@@ -1,8 +1,8 @@
 // jitploy.js ~ SERVER ~ Copyright 2017 Paul Beaudet ~ MIT License
 // Relays github webhook information to clients
 var RELAY_DB = 'jitployRelay';
-var CD_HOURS_START = 16;  // 5  pm UTC / 12 EST  // Defines hours when deployments can happen
-var CD_HOURS_END   = 23;  // 11 pm UTC /  6 EST  // TODO get this thing on your own server to remove this non-sense
+var CD_HOURS_START = 16; // 5  pm UTC / 12 EST  // Defines hours when deployments can happen
+var CD_HOURS_END   = 1;  // 11 pm UTC /  6 EST  // TODO get this thing on your own server to remove this non-sense
 var ONE_HOUR = 3600000;
 var ONE_DAY = 86400000;
 var DOWNTIME = ONE_HOUR * 16; // hours of downtime
@@ -116,11 +116,14 @@ var ohBother = {     // determines when to tell clients to buzz off so server ca
     toOffHours: function(hourStart, hourEnd){
         var currentDate = new Date();
         var currentHour = currentDate.getHours();
-        console.log(currentHour);
-        if(currentHour < hourStart || currentHour > hourEnd){return 0;} // if was supposed to be sleeping, stays up a half hour once woke
         var currentMillis = currentDate.getTime();
-        var offTime = currentDate.setHours(hourEnd, 0, 0, 0);
-        return offTime - currentMillis; // return millis before on time is up
+        if(hourStart < hourEnd){
+            if(currentHour <= hourStart || currentHour >= hourEnd){return 0;} // if was supposed to be sleeping, stays up a half hour once woke
+            return currentDate.setHours(hourEnd, 0, 0, 0) - currentMillis; // return millis before on time is up
+        } else {
+            if(currentHour >= hourStart || currentHour <= hourEnd){return 0;}
+            return currentDate.setHours(23 + hourEnd, 0, 0, 0) - currentMillis; // return millis before on time is up
+        }
     }
 };
 
