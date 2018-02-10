@@ -5,7 +5,7 @@
   "main": "jitploy.js",
   "scripts": {
     "start": "node jitploy.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "postversion": "git push"
   },
   "repository": {
     "type": "git",
