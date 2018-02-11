@@ -1,6 +1,6 @@
 {
   "name": "jitploy",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Listens for pr merges to git hub and trigger new version deployments",
   "main": "jitploy.js",
   "scripts": {
