@@ -2,7 +2,7 @@
 // Relays github webhook information to clients
 var RELAY_DB = 'jitployRelay';
 var CD_HOURS_START = 16; // 5  pm UTC / 12 EST  // Defines hours when deployments can happen
-var CD_HOURS_END   = 1;  //1  11 pm UTC /  6 EST  // TODO get this thing on your own server to remove this non-sense
+var CD_HOURS_END   = 4;  //1  11 pm UTC /  6 EST  // TODO get this thing on your own server to remove this non-sense
 var ONE_HOUR = 3600000;
 var ONE_DAY = 86400000;
 var DOWNTIME = ONE_HOUR * 12; // hours of downtime
