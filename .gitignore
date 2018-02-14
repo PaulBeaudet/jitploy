@@ -2,3 +2,4 @@ node_modules
 start.sh
 *test.js
 ecosystem.config.js
+jitploy/decrypted_*

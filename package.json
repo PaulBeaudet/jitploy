@@ -1,7 +1,7 @@
 {
   "name": "jitploy",
   "version": "1.0.2",
-  "description": "Listens for pr merges to git hub and trigger new version deployments",
+  "description": "Listens for pr merges to github and trigger new version deployments",
   "main": "jitploy.js",
   "scripts": {
     "start": "node jitploy.js",
