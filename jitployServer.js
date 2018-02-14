@@ -161,7 +161,7 @@ var serve = {                                                // handles express 
         app.use(serve.parse.json());                         // support JSON bodies
         var router = serve.express.Router();                 // create express router object to add routing events to
         router.get('/', function(req, res){res.send('running');}); // for automated things to know we are heathy
-        router.post('/pullrequest', github.listenEvent());   // real listener post route
+        router.post('/deploy', github.listenEvent());        // real listener post route
         app.use(router);                                     // get express to user the routes we set
         return http;
     }
