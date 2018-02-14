@@ -171,3 +171,6 @@ mongo.connect(process.env.MONGODB_URI, RELAY_DB);            // connect to jitpl
 var http = serve.theSite();                                  // set express middleware and routes up
 socket.listen(http);                                         // listen and handle socket connections
 http.listen(process.env.PORT);                               // listen on specified PORT enviornment variable
+
+var pkgjson = require('./package.json');
+console.log('Starting ' + pkgjson.name + ' version ' + pkgjson.version); // show version of package when restarted
