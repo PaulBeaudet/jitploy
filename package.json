@@ -1,10 +1,10 @@
 {
-  "name": "jitploy",
+  "name": "jitployServer",
   "version": "1.0.2",
   "description": "Listens for pr merges to github and trigger new version deployments",
-  "main": "jitploy.js",
+  "main": "jitployServer.js",
   "scripts": {
-    "start": "node jitploy.js",
+    "start": "node jitployServer.js",
     "postversion": "git push"
   },
   "repository": {

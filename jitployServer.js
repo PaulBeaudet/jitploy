@@ -1,4 +1,4 @@
-// jitploy.js ~ SERVER ~ Copyright 2017 Paul Beaudet ~ MIT License
+// jitployServer.js ~ Copyright 2017 Paul Beaudet ~ MIT License
 // Relays github webhook information to clients
 var RELAY_DB = 'jitployRelay';
 var CD_HOURS_START = 16; // 5  pm UTC / 12 EST  // Defines hours when deployments can happen
