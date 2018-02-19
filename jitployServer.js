@@ -5,7 +5,7 @@ var crypto     = require('crypto');      // native cryptography library for node
 var mongodb    = require('mongodb');     // schemaless database
 var bodyparser = require('body-parser'); // middleware to parse JSON bodies
 var express    = require('express');     // server framework library
-var socketio   = require('socketio');    // compatibility layar for websockets
+var socketio   = require('socket.io');    // compatibility layar for websockets
 
 var RELAY_DB = 'jitployRelay';
 
