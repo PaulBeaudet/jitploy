@@ -1,11 +1,6 @@
 // jitployServer.js ~ Copyright 2017 Paul Beaudet ~ MIT License
 // Relays github webhook information to clients
 var RELAY_DB = 'jitployRelay';
-var CD_HOURS_START = 16; // 5  pm UTC / 12 EST  // Defines hours when deployments can happen
-var CD_HOURS_END   = 4;  //1  11 pm UTC /  6 EST  // TODO get this thing on your own server to remove this non-sense
-var ONE_HOUR = 3600000;
-var ONE_DAY = 86400000;
-var DOWNTIME = ONE_HOUR * 12; // hours of downtime
 
 var service = { // logic for adding a removing service integrations
     s: [], // array where we store properties and functions of connected sevices
@@ -70,7 +65,6 @@ var socket = {                                                         // socket
         socket.io = socket.io(server);                                 // specify http server to make connections w/ to get socket.io object
         socket.io.on('connection', function(client){                   // client holds socket vars and methods for each connection event
             client.on('authenticate', socket.setup(client));           // initially clients can only ask to authenticate
-            ohBother.whenIsBreakTime();                                // Server attempt to be lazy telling clients to buzz off
         }); // basically we want to authorize our users before setting up event handlers for them or adding them to emit whitelist
     },
     setup: function(client){
@@ -81,16 +75,16 @@ var socket = {                                                         // socket
                     console.log(authPacket.name + ' was connected');
                     service.s.push(authPacket);                            // hold on to what clients are connected to us
                     client.on('disconnect', service.disconnect(client.id));// remove service from service array on disconnect
-                }, function onNoResult(){
-                    mongo.log('client not found: ' + JSON.stringify(authPacket, null, 4));
-                    socket.badClient(client);
-                }));
-            } else {
-                mongo.log('invalid client data: ' + authPacket);
-                socket.io.to(client.id).emit('break', {time: 0});
-                client.on('disconnect', function(){mongo.log('Rejected socket disconnected: ' + client.id);});
-            }
+                }, socket.invalidClient(client, authPacket)));
+            } else { socket.invalidClient(client, authPacket)();}
         };
+    },
+    invalidClient(client, authPacket){
+        return function(){
+            console.log('invalid client: ' + authPacket);
+            socket.io.to(client.id).emit('break', {time: 0});
+            client.on('disconnect', function(){mongo.log('Rejected socket disconnected: ' + client.id);});
+        }
     },
     deploy: function(repository){
         console.log('looking for ' + repository);
@@ -98,33 +92,6 @@ var socket = {                                                         // socket
             console.log('Signal deploy for ' + repository);
             socket.io.to(service.s[index].socketId).emit('deploy');
         });
-    }
-};
-
-var ohBother = {     // determines when to tell clients to buzz off so server can sleep
-    sleeping: true,  // makes sure only one time about to ask for a break is called
-    whenIsBreakTime: function(){
-        var duration = ohBother.toOffHours(CD_HOURS_START, CD_HOURS_END);
-        console.log('durration to break ' + duration);
-        if(ohBother.sleeping){setTimeout(ohBother.askForBreak, duration);} // oh bother you woke me up
-        ohBother.sleeping = false; // any time this is called server has been woken
-    },
-    askForBreak: function(){
-        socket.io.emit('break', {time: DOWNTIME}); // ask clients to buzz of for x amount of time once a day
-        ohBother.sleeping = true;
-    },
-    toOffHours: function(hourStart, hourEnd){
-        var currentDate = new Date();
-        var currentHour = currentDate.getHours();
-        var currentMillis = currentDate.getTime();
-        if(hourStart < hourEnd){
-            if(currentHour < hourStart || currentHour >= hourEnd){return 0;} // if was supposed to be sleeping, stays up a half hour once woke
-            return currentDate.setHours(hourEnd, 0, 0, 0) - currentMillis; // return millis before on time is up
-        } else {
-            if(currentHour <= hourEnd){} // if was supposed to be sleeping, stays up a half hour once woke
-            else if (currentHour < hourStart){return 0;}
-            return currentDate.setHours(23 + hourEnd, 0, 0, 0) - currentMillis; // return millis before on time is up
-        }
     }
 };
 
