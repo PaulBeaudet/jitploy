@@ -126,8 +126,8 @@ var serve = {                                                // handles express 
     theSite: function (){                                    // methode call to serve site
         var app = express();                                 // create famework object
         var http = require('http').Server(app);              // http server for express framework
-        app.use(bodyparser.json());                         // support JSON bodies
-        var router = serve.express.Router();                 // create express router object to add routing events to
+        app.use(bodyparser.json());                          // support JSON bodies
+        var router = express.Router();                       // create express router object to add routing events to
         router.get('/', function(req, res){res.send('running');}); // for automated things to know we are heathy
         router.post('/deploy', github.listenEvent());        // real listener post route
         app.use(router);                                     // get express to user the routes we set
