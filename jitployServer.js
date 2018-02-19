@@ -1,5 +1,12 @@
 // jitployServer.js ~ Copyright 2017 Paul Beaudet ~ MIT License
 // Relays github webhook information to clients
+// Libraries
+var crypto     = require('crypto');      // native cryptography library for nodejs
+var mongodb    = require('mongodb');     // schemaless database
+var bodyparser = require('body-parser'); // middleware to parse JSON bodies
+var express    = require('express');     // server framework library
+var socketio   = require('socketio');    // compatibility layar for websockets
+
 var RELAY_DB = 'jitployRelay';
 
 var service = { // logic for adding a removing service integrations
@@ -27,17 +34,16 @@ var service = { // logic for adding a removing service integrations
 };
 
 var mongo = {
-    client: require('mongodb').MongoClient,
     db: {},                                            // object that contains connected databases
     connect: function(url, dbName){                    // url to db and what well call this db in case we want multiple
-        mongo.client.connect(url, mongo.bestCase(function onConnect(db){
+        mongodb.MongoClient().connect(url, mongo.bestCase(function onConnect(db){
             mongo.db[dbName] = db;
         }));
     },
     bestCase: function(mongoSuccessCallback, noResultCallback){          // awful abstraction layer to be lazy
         return function handleWorstCaseThings(error, wantedThing){       // this is basically the same pattern for every mongo query callback
             if(error){
-                mongo.log('well guess we failed to plan for this: ' + error);
+                console.log('well guess we failed to plan for this: ' + error);
             } else if (wantedThing){
                 mongoSuccessCallback(wantedThing);
             } else if (noResultCallback){
@@ -60,9 +66,8 @@ var mongo = {
 };
 
 var socket = {                                                         // socket.io singleton: handles socket server logic
-    io: require('socket.io'),                                          // grab socket.io library
     listen: function(server){                                          // create server and setup on connection events
-        socket.io = socket.io(server);                                 // specify http server to make connections w/ to get socket.io object
+        socket.io = socketio(server);                                  // specify http server to make connections w/ to get socket.io object
         socket.io.on('connection', function(client){                   // client holds socket vars and methods for each connection event
             client.on('authenticate', socket.setup(client));           // initially clients can only ask to authenticate
         }); // basically we want to authorize our users before setting up event handlers for them or adding them to emit whitelist
@@ -96,11 +101,9 @@ var socket = {                                                         // socket
 };
 
 var github = {
-    crypto: require('crypto'),
-    querystring: require('querystring'),
     verifyHook: function(signature, payload, secret){
-        var computedSignature = 'sha1=' + github.crypto.createHmac("sha1", secret).update(JSON.stringify(payload)).digest("hex");
-        return github.crypto.timingSafeEqual(Buffer.from(signature, 'utf8'), Buffer.from(computedSignature, 'utf8'));
+        var computedSignature = 'sha1=' + crypto.createHmac("sha1", secret).update(JSON.stringify(payload)).digest("hex");
+        return crypto.timingSafeEqual(Buffer.from(signature, 'utf8'), Buffer.from(computedSignature, 'utf8'));
     },
     listenEvent: function(responseURI){                           // create route handler for test or prod
         return function(req, res){                                // route handler
@@ -120,12 +123,10 @@ var github = {
 };
 
 var serve = {                                                // handles express server setup
-    express: require('express'),                             // server framework library
-    parse: require('body-parser'),                           // middleware to parse JSON bodies
     theSite: function (){                                    // methode call to serve site
-        var app = serve.express();                           // create famework object
+        var app = express();                                 // create famework object
         var http = require('http').Server(app);              // http server for express framework
-        app.use(serve.parse.json());                         // support JSON bodies
+        app.use(bodyparser.json());                         // support JSON bodies
         var router = serve.express.Router();                 // create express router object to add routing events to
         router.get('/', function(req, res){res.send('running');}); // for automated things to know we are heathy
         router.post('/deploy', github.listenEvent());        // real listener post route
