@@ -70,8 +70,19 @@ var socket = {                                                         // socket
         socket.io = socketio(server);                                  // specify http server to make connections w/ to get socket.io object
         socket.io.on('connection', function(client){                   // client holds socket vars and methods for each connection event
             client.on('authenticate', socket.setup(client));           // initially clients can only ask to authenticate
+            client.on('sub', socket.sub(client));                      // Subscribe to deploy events for private (w/ token) or open repository
         }); // basically we want to authorize our users before setting up event handlers for them or adding them to emit whitelist
     },
+    sub: function(client){
+        return function(repo){
+            if(repo && repo.hasOwnProperty('name') && repo.hasOwnProperty('token')){ // token should be 0 in cases of public repos
+                mongo.db[RELAY_DB].collection('clients').findOne({name: repo.name, token: repo.token}, function onDoc(error, validClient){
+                    if(validClient){client.join(repo.name);}
+                    else           {socket.invalidClient(client, repo, error)();}
+                });
+            } else {socket.invalidClient(client, repo)();}
+        }
+    }
     setup: function(client){
         return function(authPacket){
             if(authPacket && authPacket.hasOwnProperty('name') && authPacket.hasOwnProperty('token')){ // lets be sure we got something valid from client
@@ -84,17 +95,18 @@ var socket = {                                                         // socket
             } else { socket.invalidClient(client, authPacket)();}
         };
     },
-    invalidClient(client, authPacket){
+    invalidClient(client, authPacket, error){
         return function(){
-            console.log('invalid client: ' + authPacket);
-            socket.io.to(client.id).emit('break', {time: 0});
-            client.on('disconnect', function(){mongo.log('Rejected socket disconnected: ' + client.id);});
+            if(!error){error = '';}
+            console.log(error + ' Invalid connection attempt: ' + authPacket);
+            socket.io.to(client.id).emit('rejected');
         }
     },
-    deploy: function(repository){
-        console.log('looking for ' + repository);
-        service.doByName(repository, function deployIt(index){
-            console.log('Signal deploy for ' + repository);
+    deploy: function(repoName){
+        socket.io.to(repoName).emit('deploy'); // Emit deploy signal to everyone subscribed to this repo
+        console.log('looking for ' + repoName);
+        service.doByName(repoName, function deployIt(index){
+            console.log('Signal deploy for ' + repoName);
             socket.io.to(service.s[index].socketId).emit('deploy');
         });
     }
