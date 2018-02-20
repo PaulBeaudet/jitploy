@@ -82,7 +82,7 @@ var socket = {                                                         // socket
                 });
             } else {socket.invalidClient(client, repo)();}
         }
-    }
+    },
     setup: function(client){
         return function(authPacket){
             if(authPacket && authPacket.hasOwnProperty('name') && authPacket.hasOwnProperty('token')){ // lets be sure we got something valid from client
