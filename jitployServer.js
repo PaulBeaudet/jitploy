@@ -9,30 +9,6 @@ var socketio   = require('socket.io');    // compatibility layar for websockets
 
 var RELAY_DB = 'jitployRelay';
 
-var service = { // logic for adding a removing service integrations
-    s: [], // array where we store properties and functions of connected sevices
-    disconnect: function(socketId){                                                          // hold socketId information in closure
-        return function socketDisconnect(){
-            service.do(socketId, function removeservice(index){
-                console.log(service.s[index].name + ' was disconnected');
-                service.s.splice(index, 1);
-            });// given its there remove service from services array
-        };
-    },
-    do: function(socketId, foundCallback){                     // executes a callback with one of our services based on socket id
-        var serviceNumber = service.s.map(function(eachservice){
-            return eachservice.socketId;
-        }).indexOf(socketId);                                  // figure index service in our services array
-        if(serviceNumber > -1){foundCallback(serviceNumber);}  // NOTE we remove services keeping ids in closure would be inaccurate
-    },
-    doByName: function(name, foundCallback){                   // executes a callback with one of our services based on socket id
-        var serviceNumber = service.s.map(function(eachservice){
-            return eachservice.name;
-        }).indexOf(name);                                      // figure index service in our services array
-        if(serviceNumber > -1){foundCallback(serviceNumber);}  // NOTE we remove services keeping ids in closure would be inaccurate
-    }
-};
-
 var mongo = {
     db: {},                                            // object that contains connected databases
     connect: function(url, dbName){                    // url to db and what well call this db in case we want multiple
@@ -65,12 +41,11 @@ var mongo = {
     }
 };
 
-var socket = {                                                         // socket.io singleton: handles socket server logic
-    listen: function(server){                                          // create server and setup on connection events
-        socket.io = socketio(server);                                  // specify http server to make connections w/ to get socket.io object
-        socket.io.on('connection', function(client){                   // client holds socket vars and methods for each connection event
-            client.on('authenticate', socket.setup(client));           // initially clients can only ask to authenticate
-            client.on('sub', socket.sub(client));                      // Subscribe to deploy events for private (w/ token) or open repository
+var socket = {                                             // socket.io singleton: handles socket server logic
+    listen: function(server){                              // create server and setup on connection events
+        socket.io = socketio(server);                      // specify http server to make connections w/ to get socket.io object
+        socket.io.on('connection', function(client){       // client holds socket vars and methods for each connection event
+            client.on('authenticate', socket.sub(client)); // Subscribe to deploy events for private (w/ token) or open repository
         }); // basically we want to authorize our users before setting up event handlers for them or adding them to emit whitelist
     },
     sub: function(client){
@@ -83,18 +58,6 @@ var socket = {                                                         // socket
             } else {socket.invalidClient(client, repo)();}
         }
     },
-    setup: function(client){
-        return function(authPacket){
-            if(authPacket && authPacket.hasOwnProperty('name') && authPacket.hasOwnProperty('token')){ // lets be sure we got something valid from client
-                mongo.db[RELAY_DB].collection('clients').findOne({name: authPacket.name, token: authPacket.token}, mongo.bestCase(function onFind(doc){
-                    authPacket.socketId = client.id;
-                    console.log(authPacket.name + ' was connected');
-                    service.s.push(authPacket);                            // hold on to what clients are connected to us
-                    client.on('disconnect', service.disconnect(client.id));// remove service from service array on disconnect
-                }, socket.invalidClient(client, authPacket)));
-            } else { socket.invalidClient(client, authPacket)();}
-        };
-    },
     invalidClient(client, authPacket, error){
         return function(){
             if(!error){error = '';}
@@ -104,11 +67,6 @@ var socket = {                                                         // socket
     },
     deploy: function(repoName){
         socket.io.to(repoName).emit('deploy'); // Emit deploy signal to everyone subscribed to this repo
-        console.log('looking for ' + repoName);
-        service.doByName(repoName, function deployIt(index){
-            console.log('Signal deploy for ' + repoName);
-            socket.io.to(service.s[index].socketId).emit('deploy');
-        });
     }
 };
 
