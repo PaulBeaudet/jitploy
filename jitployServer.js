@@ -92,8 +92,11 @@ var github = {
                 var findQuery = {fullRepoName: req.body.repository.full_name.toLowerCase()};
                 mongo.db[RELAY_DB].collection('github_secrets').findOne(findQuery, mongo.bestCase(function onFind(doc){
                     if(github.verifyHook(req.headers['x-hub-signature'], req.body, doc.secret)){
-                        console.log(JSON.stringify(req.body.repository, null, 4));
-                        socket.deploy(req.body.repository.name);  // to look up git hub secret check if valid request and signal deploy
+                        // console.log(JSON.stringify(req.body.repository, null, 4));
+                        socket.deploy(req.body.repository.ssh_url);   // given service registered only by git@github url
+                        socket.deploy(req.body.repository.clone_url); // given service registered only by https url
+                        socket.deploy(req.body.repository.git_url);   // given service registered only by git url
+                        socket.deploy(req.body.repository.name);      // to look up git hub secret check if valid request and signal deploy
                     } else {console.log('secret no good');}
                 }));
                 console.log('Just got a post from ' + req.body.repository.full_name);   // see what we get
