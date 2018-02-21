@@ -98,7 +98,7 @@ var socket = {                                                         // socket
     invalidClient(client, authPacket, error){
         return function(){
             if(!error){error = '';}
-            console.log(error + ' Invalid connection attempt: ' + authPacket);
+            console.log(error + ' Invalid connection attempt: ' + JSON.stringify(authPacket, null, 4));
             socket.io.to(client.id).emit('rejected');
         }
     },
