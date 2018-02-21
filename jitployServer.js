@@ -50,10 +50,20 @@ var socket = {                                             // socket.io singleto
     },
     sub: function(client){
         return function(repo){
-            if(repo && repo.hasOwnProperty('name') && repo.hasOwnProperty('token')){ // token should be 0 in cases of public repos
-                mongo.db[RELAY_DB].collection('clients').findOne({name: repo.name, token: repo.token}, function onDoc(error, validClient){
-                    if(validClient){client.join(repo.name);}
-                    else           {socket.invalidClient(client, repo, error)();}
+            if(repo && repo.hasOwnProperty('token')){      // token should be 0 in cases of public repos
+                var query = {token: repo.token};
+                var deployChannel = "";
+                if(repo.hasOwnProperty('name')){
+                    query.name = repo.name;
+                    deployChannel = repo.name;
+                } else if(repo.hasOwnProperty('url')){
+                    query.url = repo.url;
+                    deployChannel = repo.url;
+                } else {socket.invalidClient(client, repo, 'Malformed request')();}
+
+                mongo.db[RELAY_DB].collection('clients').findOne(query, function onDoc(error, validClient){
+                    if(validClient){client.join(deployChannel);}
+                    else {socket.invalidClient(client, repo, error)();}
                 });
             } else {socket.invalidClient(client, repo)();}
         }
@@ -81,8 +91,8 @@ var github = {
                 res.status(200).send('OK');res.end();             // ACK notification
                 var findQuery = {fullRepoName: req.body.repository.full_name.toLowerCase()};
                 mongo.db[RELAY_DB].collection('github_secrets').findOne(findQuery, mongo.bestCase(function onFind(doc){
-                    console.log('verifing secret');
                     if(github.verifyHook(req.headers['x-hub-signature'], req.body, doc.secret)){
+                        console.log(JSON.stringify(req.body.repository, null, 4));
                         socket.deploy(req.body.repository.name);  // to look up git hub secret check if valid request and signal deploy
                     } else {console.log('secret no good');}
                 }));
