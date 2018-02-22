@@ -26,18 +26,6 @@ var mongo = {
                 noResultCallback();
             }
         };
-    },
-    log: function(msg){                                // persistent logs
-        var timestamp = new Date();
-        mongo.db[RELAY_DB].collection('logs').insertOne({
-                msg: msg,
-                timestamp: timestamp.toDateString()
-            }, function onInsert(error){
-            if(error){
-                console.log('Mongo Log error: ' + error);
-                console.log(msg);
-            }
-        });
     }
 };
 
@@ -62,8 +50,10 @@ var socket = {                                             // socket.io singleto
                 } else {socket.invalidClient(client, repo, 'Malformed request')();}
 
                 mongo.db[RELAY_DB].collection('clients').findOne(query, function onDoc(error, validClient){
-                    if(validClient){client.join(deployChannel);}
-                    else {socket.invalidClient(client, repo, error)();}
+                    if(validClient){
+                        console.log('New connection subscribed to ' + deployChannel);
+                        client.join(deployChannel);
+                    } else {socket.invalidClient(client, repo, error)();}
                 });
             } else {socket.invalidClient(client, repo)();}
         }
