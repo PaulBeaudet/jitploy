@@ -82,7 +82,7 @@ var github = {
                 var findQuery = {fullRepoName: req.body.repository.full_name.toLowerCase()};
                 mongo.db[RELAY_DB].collection('github_secrets').findOne(findQuery, mongo.bestCase(function onFind(doc){
                     if(github.verifyHook(req.headers['x-hub-signature'], req.body, doc.secret)){
-                        console.log('deployment event for ' + req.body.repository.ssh_url);
+                        console.log('deployment event for ' + JSON.stringify(req.body.repository, null, 4));
                         socket.deploy(req.body.repository.ssh_url);   // given service registered only by git@github url
                         socket.deploy(req.body.repository.clone_url); // given service registered only by https url
                         socket.deploy(req.body.repository.git_url);   // given service registered only by git url
